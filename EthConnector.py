@@ -4,7 +4,7 @@ from envv import getPrivateKey
 provider = Web3.HTTPProvider('https://eth-sepolia.g.alchemy.com/v2/4aOT7ezZZe-7UJ9UGEcHYtHWnd1O154j')
 w3 = Web3(provider)
 
-contract_address = Web3.to_checksum_address("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512")
+contract_address = Web3.to_checksum_address("")
 
 contract_abi =[
     {
@@ -107,7 +107,7 @@ contract_abi =[
   ]
 
 contract = w3.eth.contract(address=contract_address, abi=contract_abi)
-sender_address = Web3.to_checksum_address("0x8453ada3A9E671E0f115B2f2A2939b03aD519615")
+sender_address = Web3.to_checksum_address("")
 w3.eth.defaultAccount = sender_address
 nonce = w3.eth.getTransactionCount(sender_address)
 data = contract.functions.getOperations().buildTransaction({
