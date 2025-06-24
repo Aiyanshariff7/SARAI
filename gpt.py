@@ -1,6 +1,6 @@
 import requests
 
-API_KEY = "AIzaSyChCQFG1lIilhdZNlexPNH3Aom2WJPajn4"  # replace with your Gemini API key
+API_KEY = ""  # replace with your Gemini API key
 
 def send_req(transcribed_text=""):
     if not transcribed_text:
@@ -51,7 +51,7 @@ def send_req(transcribed_text=""):
 
 '''
 {
-    name:srajan
+    name:aiyan
     location:bengaluru
     emergency:amb
     priority:high
