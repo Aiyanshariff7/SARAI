@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Response System Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin=""/>
+    <style>
+        .bg-medical { background-color: #d9534f; color: white; }
+        .bg-fire { background-color: #f0ad4e; color: white; }
+        .bg-crime { background-color: #5bc0de; color: white; }
+        .bg-other { background-color: #5cb85c; color: white; }
+        
+        .priority-high { border-left: 5px solid #d9534f; }
+        .priority-medium { border-left: 5px solid #f0ad4e; }
+        .priority-low { border-left: 5px solid #5cb85c; }
+        
+        .status-active { font-weight: bold; color: #d9534f; }
+        .status-resolved { color: #5cb85c; }
+        .status-pending { color: #f0ad4e; }
+        
+        #system-status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-operational { background-color: #5cb85c; }
+        .status-degraded { background-color: #f0ad4e; }
+        .status-down { background-color: #d9534f; }
+        
+        .call-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .call-item:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .department-badge {
+            margin-right: 5px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-telephone-fill me-2"></i>Emergency Response System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="d-flex">
+                <div class="system-status me-3">
+                    <span id="system-status-indicator" class="status-operational"></span>
+                    <span id="system-status-text">System Online</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Quick Stats</span>
+                    </h6>
+                    <div class="px-3 py-2">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Active Calls</h5>
+                                <h2 id="active-calls-count">-</h2>
+                            </div>
+                        </div>
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Today's Calls</h5>
+                                <h2 id="today-calls-count">-</h2>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Quick Filters</span>
+                    </h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item px-3 py-2">
+                            <button id="filter-all" class="btn btn-sm btn-outline-dark w-100">All Calls</button>
+                        </li>
+                        <li class="nav-item px-3 py-2">
+                            <button id="filter-active" class="btn btn-sm btn-outline-danger w-100">Active Only</button>
+                        </li>
+                        <li class="nav-item px-3 py-2">
+                            <button id="filter-high-priority" class="btn btn-sm btn-outline-warning w-100">High Priority</button>
+                        </li>
+                    </ul>
+                    
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Emergency Types</span>
+                    </h6>
+                    <ul class="nav flex-column">
+                        <li class="nav-item px-3 py-1">
+                            <div class="form-check">
+                                <input class="form-check-input type-filter" type="checkbox" value="Medical" id="filter-medical" checked>
+                                <label class="form-check-label" for="filter-medical">Medical</label>
+                            </div>
+                        </li>
+                        <li class="nav-item px-3 py-1">
+                            <div class="form-check">
+                                <input class="form-check-input type-filter" type="checkbox" value="Fire" id="filter-fire" checked>
+                                <label class="form-check-label" for="filter-fire">Fire</label>
+                            </div>
+                        </li>
+                        <li class="nav-item px-3 py-1">
+                            <div class="form-check">
+                                <input class="form-check-input type-filter" type="checkbox" value="Crime" id="filter-crime" checked>
+                                <label class="form-check-label" for="filter-crime">Crime</label>
+                            </div>
+                        </li>
+                        <li class="nav-item px-3 py-1">
+                            <div class="form-check">
+                                <input class="form-check-input type-filter" type="checkbox" value="Other" id="filter-other" checked>
+                                <label class="form-check-label" for="filter-other">Other</label>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1>Emergency Response Dashboard</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button id="refresh-data" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-medical">
+                            <div class="card-body">
+                                <h5 class="card-title">Medical</h5>
+                                <h3 id="medical-count">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-fire">
+                            <div class="card-body">
+                                <h5 class="card-title">Fire</h5>
+                                <h3 id="fire-count">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-crime">
+                            <div class="card-body">
+                                <h5 class="card-title">Crime</h5>
+                                <h3 id="crime-count">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-other">
+                            <div class="card-body">
+                                <h5 class="card-title">Other</h5>
+                                <h3 id="other-count">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Calls -->
+                <h2>Recent Emergency Calls</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Location</th>
+                                <th>Caller</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-calls-table">
+                            <tr>
+                                <td colspan="8" class="text-center">Loading data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Map View -->
+                <h2 class="mt-5">Emergency Call Locations</h2>
+                <div id="emergency-map" style="height: 400px;" class="mb-4"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Call Detail Modal -->
+    <div class="modal fade" id="callDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Emergency Call Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="call-details-content">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="mark-resolved-btn">Mark as Resolved</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let markers = [];
+        let currentCallId = null;
+        
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map
+            initMap();
+            
+            // Load initial data
+            loadSystemStatus();
+            loadRecentCalls();
+            loadCallStats();
+            
+            // Set up event handlers
+            document.getElementById('refresh-data').addEventListener('click', refreshAllData);
+            document.getElementById('filter-all').addEventListener('click', () => filterCalls('all'));
+            document.getElementById('filter-active').addEventListener('click', () => filterCalls('active'));
+            document.getElementById('filter-high-priority').addEventListener('click', () => filterCalls('high'));
+            document.querySelectorAll('.type-filter').forEach(checkbox => {
+                checkbox.addEventListener('change', applyTypeFilters);
+            });
+            
+            document.getElementById('mark-resolved-btn').addEventListener('click', markCallResolved);
+            
+            // Set up refresh interval (every 30 seconds)
+            setInterval(refreshAllData, 30000);
+        });
+        
+        function initMap() {
+            // Initialize the map
+            map = L.map('emergency-map').setView([40.7128, -74.0060], 10); // Default to NYC
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        }
+        
+        function loadSystemStatus() {
+            fetch('/api/system/status')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    // Update system status indicator
+                    const indicator = document.getElementById('system-status-indicator');
+                    const statusText = document.getElementById('system-status-text');
+                    
+                    if (data.status === 'operational') {
+                        indicator.className = 'status-operational';
+                        statusText.textContent = 'System Online';
+                    } else {
+                        indicator.className = 'status-degraded';
+                        statusText.textContent = 'System Degraded';
+                    }
+                    
+                    // Update stats
+                    document.getElementById('active-calls-count').textContent = data.active_calls;
+                    document.getElementById('today-calls-count').textContent = data.recent_calls;
+                })
+                .catch(error => {
+                    console.error('Error loading system status:', error);
+                    document.getElementById('system-status-indicator').className = 'status-down';
+                    document.getElementById('system-status-text').textContent = 'Connection Error';
+                });
+        }
+        
+        function loadRecentCalls() {
+            fetch('/api/calls/recent')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateCallsTable(data.calls);
+                        updateMapMarkers(data.calls);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading recent calls:', error);
+                    const tableBody = document.getElementById('recent-calls-table');
+                    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error loading data. Please try again.</td></tr>`;
+                });
+        }
+        
+        function loadCallStats() {
+            fetch('/api/calls/stats')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateEmergencyTypeCounts(data.type_stats);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading call stats:', error);
+                    // Set all counts to 0 on error
+                    updateEmergencyTypeCounts({ Medical: 0, Fire: 0, Crime: 0, Other: 0 });
+                });
+        }
+        
+        function updateCallsTable(calls) {
+            const tableBody = document.getElementById('recent-calls-table');
+            tableBody.innerHTML = '';
+            
+            if (calls.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="8" class="text-center">No emergency calls found</td>';
+                tableBody.appendChild(row);
+                return;
+            }
+            
+            calls.forEach(call => {
+                const row = document.createElement('tr');
+                row.className = `call-item priority-${call.priority ? call.priority.toLowerCase() : 'medium'}`;
+                row.dataset.callId = call.id;
+                
+                // Split departments into badges
+                let departmentBadges = '';
+                if (call.department) {
+                    const departments = call.department.split(',');
+                    departments.forEach(dept => {
+                        let badgeClass = 'bg-secondary';
+                        if (dept.trim() === 'Medical') badgeClass = 'bg-danger';
+                        if (dept.trim() === 'Fire') badgeClass = 'bg-warning text-dark';
+                        if (dept.trim() === 'Police') badgeClass = 'bg-primary';
+                        
+                        departmentBadges += `<span class="badge ${badgeClass} department-badge">${dept.trim()}</span>`;
+                    });
+                }
+                
+                row.innerHTML = `
+                    <td>${call.id}</td>
+                    <td>
+                        <span class="badge bg-${getEmergencyTypeClass(call.emergency_type)}">${call.emergency_type || 'Unknown'}</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${getPriorityClass(call.priority)}">${call.priority || 'Medium'}</span>
+                    </td>
+                    <td>${call.location || 'Unknown'}</td>
+                    <td>${call.name || 'Unknown'} (${call.caller_number || 'No number'})</td>
+                    <td class="status-${call.status ? call.status.toLowerCase() : 'active'}">${capitalizeFirstLetter(call.status || 'active')}</td>
+                    <td>${call.time || 'Unknown'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary view-details-btn" data-call-id="${call.id}">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                        ${departmentBadges}
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Add event listeners to the view buttons
+            document.querySelectorAll('.view-details-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const callId = btn.getAttribute('data-call-id');
+                    showCallDetails(callId);
+                });
+            });
+            
+            // Make entire row clickable
+            document.querySelectorAll('.call-item').forEach(row => {
+                row.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('btn')) {
+                        const callId = row.getAttribute('data-call-id');
+                        showCallDetails(callId);
+                    }
+                });
+            });
+        }
+        
+        function updateMapMarkers(calls) {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            // Add markers for calls with valid coordinates
+            calls.forEach(call => {
+                // For now, we'll use a simple geocoding approach
+                // In a real app, you'd want to use a geocoding service or store coordinates in your database
+                const coordinates = getCoordinatesForLocation(call.location);
+                
+                if (coordinates) {
+                    // Create marker
+                    const marker = L.marker([coordinates.latitude, coordinates.longitude]).addTo(map);
+                    
+                    // Create popup content
+                    const popupContent = `
+                        <strong>${call.emergency_type || 'Unknown'} Emergency</strong><br>
+                        Priority: ${call.priority || 'Medium'}<br>
+                        Location: ${call.location || 'Unknown'}<br>
+                        Status: ${capitalizeFirstLetter(call.status || 'active')}<br>
+                        <button class="btn btn-sm btn-primary mt-2 view-popup-btn" data-call-id="${call.id}">View Details</button>
+                    `;
+                    
+                    // Add popup to marker
+                    marker.bindPopup(popupContent);
+                    
+                    // Store marker
+                    markers.push(marker);
+                    
+                    // Add event listener to the view button in popup
+                    marker.on('popupopen', () => {
+                        const viewBtn = document.querySelector('.view-popup-btn');
+                        if (viewBtn) {
+                            viewBtn.addEventListener('click', (e) => {
+                                e.preventDefault();
+                                const callId = viewBtn.getAttribute('data-call-id');
+                                showCallDetails(callId);
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // Fit map to show all markers if we have any
+            if (markers.length > 0) {
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds());
+            }
+        }
+        
+        // Simple mock geocoding function - replace with real geocoding in production
+        function getCoordinatesForLocation(location) {
+            if (!location) return null;
+            
+            // This is just a mock - in a real app, you'd use a geocoding service
+            // or store coordinates in your database
+            const mockLocations = {
+                '123 Main St, New York, NY': { latitude: 40.7128, longitude: -74.0060 },
+                '456 Park Ave, New York, NY': { latitude: 40.7212, longitude: -73.9874 },
+                '789 Broadway, New York, NY': { latitude: 40.7320, longitude: -73.9950 },
+                '321 Fifth Ave, New York, NY': { latitude: 40.7423, longitude: -73.9865 },
+                '567 Cedar St, New York, NY': { latitude: 40.7508, longitude: -73.9764 }
+            };
+            
+            return mockLocations[location] || null;
+        }
+        
+        function updateEmergencyTypeCounts(stats) {
+            // Update the emergency type count cards
+            document.getElementById('medical-count').textContent = stats.Medical || 0;
+            document.getElementById('fire-count').textContent = stats.Fire || 0;
+            document.getElementById('crime-count').textContent = stats.Crime || 0;
+            document.getElementById('other-count').textContent = stats.Other || 0;
+        }
+        
+        function showCallDetails(callId) {
+            // Store the current call ID
+            currentCallId = callId;
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('callDetailModal'));
+            modal.show();
+            
+            // Reset the modal content
+            document.getElementById('call-details-content').innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fetch the call details
+            fetch(`/api/calls/${callId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        displayCallDetails(data.call);
+                    } else {
+                        document.getElementById('call-details-content').innerHTML = `
+                            <div class="alert alert-danger">
+                                Error loading call details: ${data.message || 'Unknown error'}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading call details:', error);
+                    document.getElementById('call-details-content').innerHTML = `
+                        <div class="alert alert-danger">
+                            Error loading call details. Please try again later.
+                        </div>
+                    `;
+                });
+        }
+        
+        function displayCallDetails(call) {
+            // Update the modal content with the call details
+            const content = document.getElementById('call-details-content');
+            
+            // Create status badge
+            let statusBadgeClass = 'bg-secondary';
+            if (call.status === 'active') statusBadgeClass = 'bg-danger';
+            if (call.status === 'pending') statusBadgeClass = 'bg-warning text-dark';
+            if (call.status === 'resolved') statusBadgeClass = 'bg-success';
+            
+            // Create priority badge
+            let priorityBadgeClass = 'bg-secondary';
+            if (call.priority === 'High') priorityBadgeClass = 'bg-danger';
+            if (call.priority === 'Medium') priorityBadgeClass = 'bg-warning text-dark';
+            if (call.priority === 'Low') priorityBadgeClass = 'bg-success';
+            
+            // Create type badge
+            const typeBadgeClass = `bg-${getEmergencyTypeClass(call.emergency_type)}`;
+            
+            // Format the assigned departments
+            let departmentBadges = '';
+            if (call.department) {
+                const departments = call.department.split(',');
+                departments.forEach(dept => {
+                    let badgeClass = 'bg-secondary';
+                    if (dept.trim() === 'Medical') badgeClass = 'bg-danger';
+                    if (dept.trim() === 'Fire') badgeClass = 'bg-warning text-dark';
+                    if (dept.trim() === 'Police') badgeClass = 'bg-primary';
+                    
+                    departmentBadges += `<span class="badge ${badgeClass} m-1">${dept.trim()}</span>`;
+                });
+            }
+            
+            // Update the modal with the call details
+            content.innerHTML = `
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Call #${call.id}: ${call.emergency_type || 'Unknown'} Emergency</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Status:</strong> 
+                                <span class="badge ${statusBadgeClass}">${capitalizeFirstLetter(call.status || 'active')}</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Priority:</strong> 
+                                <span class="badge ${priorityBadgeClass}">${call.priority || 'Medium'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Type:</strong> 
+                                <span class="badge ${typeBadgeClass}">${call.emergency_type || 'Unknown'}</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Reported:</strong> ${call.time || 'Unknown'}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Caller:</strong> ${call.name || 'Unknown'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Phone:</strong> ${call.caller_number || 'Unknown'}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Location:</strong> ${call.location || 'Unknown'}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Assigned Departments:</strong><br>
+                                ${departmentBadges || '<span class="text-muted">No departments assigned</span>'}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Description:</strong>
+                                <p class="mt-2">${call.description || 'No description provided'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <strong>Additional Notes:</strong>
+                                <p class="mt-2">${call.notes || 'No additional notes'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Response Timeline</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <i class="bi bi-telephone-fill me-2 text-primary"></i>
+                                <strong>${call.time || 'Unknown'}</strong>: Call received
+                            </li>
+                            ${call.dispatched_at ? `
+                                <li class="list-group-item">
+                                    <i class="bi bi-send-fill me-2 text-warning"></i>
+                                    <strong>${call.dispatched_at}</strong>: Units dispatched
+                                </li>
+                            ` : ''}
+                            ${call.arrived_at ? `
+                                <li class="list-group-item">
+                                    <i class="bi bi-geo-alt-fill me-2 text-info"></i>
+                                    <strong>${call.arrived_at}</strong>: Units arrived on scene
+                                </li>
+                            ` : ''}
+                            ${call.resolved_at ? `
+                                <li class="list-group-item">
+                                    <i class="bi bi-check-circle-fill me-2 text-success"></i>
+                                    <strong>${call.resolved_at}</strong>: Emergency resolved
+                                </li>
+                            ` : ''}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            // Update the "Mark as Resolved" button visibility based on status
+            const resolveBtn = document.getElementById('mark-resolved-btn');
+            if (call.status === 'resolved') {
+                resolveBtn.style.display = 'none';
+            } else {
+                resolveBtn.style.display = 'block';
+            }
+        }
+        
+        function markCallResolved() {
+            if (!currentCallId) return;
+            
+            // Show loading state
+            const resolveBtn = document.getElementById('mark-resolved-btn');
+            resolveBtn.disabled = true;
+            resolveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            
+            // Send request to mark the call as resolved
+            fetch(`/api/calls/${currentCallId}/resolve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Show success message
+                        const content = document.getElementById('call-details-content');
+                        content.innerHTML = `
+                            <div class="alert alert-success">
+                                The call has been marked as resolved.
+                            </div>
+                            ${content.innerHTML}
+                        `;
+                        
+                        // Hide the resolve button
+                        resolveBtn.style.display = 'none';
+                        
+                        // Refresh the calls data
+                        loadRecentCalls();
+                        loadCallStats();
+                    } else {
+                        // Show error message
+                        const content = document.getElementById('call-details-content');
+                        content.innerHTML = `
+                            <div class="alert alert-danger">
+                                Error marking call as resolved: ${data.message || 'Unknown error'}
+                            </div>
+                            ${content.innerHTML}
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error marking call as resolved:', error);
+                    const content = document.getElementById('call-details-content');
+                    content.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error marking call as resolved. Please try again later.
+                        </div>
+                        ${content.innerHTML}
+                    `;
+                })
+                .finally(() => {
+                    resolveBtn.disabled = false;
+                    resolveBtn.innerHTML = 'Mark as Resolved';
+                });
+        }
+        
+        function refreshAllData() {
+            loadSystemStatus();
+            loadRecentCalls();
+            loadCallStats();
+        }
+        
+        function filterCalls(filterType) {
+            // Clear any active button styles
+            document.getElementById('filter-all').classList.remove('btn-dark');
+            document.getElementById('filter-all').classList.add('btn-outline-dark');
+            document.getElementById('filter-active').classList.remove('btn-danger');
+            document.getElementById('filter-active').classList.add('btn-outline-danger');
+            document.getElementById('filter-high-priority').classList.remove('btn-warning');
+            document.getElementById('filter-high-priority').classList.add('btn-outline-warning');
+            
+            // Set active button style
+            if (filterType === 'all') {
+                document.getElementById('filter-all').classList.remove('btn-outline-dark');
+                document.getElementById('filter-all').classList.add('btn-dark');
+            } else if (filterType === 'active') {
+                document.getElementById('filter-active').classList.remove('btn-outline-danger');
+                document.getElementById('filter-active').classList.add('btn-danger');
+            } else if (filterType === 'high') {
+                document.getElementById('filter-high-priority').classList.remove('btn-outline-warning');
+                document.getElementById('filter-high-priority').classList.add('btn-warning');
+            }
+            
+            // Apply the filter
+            fetch(`/api/calls/recent?filter=${filterType}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateCallsTable(data.calls);
+                        updateMapMarkers(data.calls);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error applying filter:', error);
+                    const tableBody = document.getElementById('recent-calls-table');
+                    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error applying filter. Please try again.</td></tr>`;
+                });
+        }
+        
+        function applyTypeFilters() {
+            // Get selected emergency types
+            const selectedTypes = [];
+            document.querySelectorAll('.type-filter:checked').forEach(checkbox => {
+                selectedTypes.push(checkbox.value);
+            });
+            
+            if (selectedTypes.length === 0) {
+                // If no types selected, show all
+                document.querySelectorAll('.type-filter').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                return;
+            }
+            
+            // Apply the filter
+            fetch('/api/calls/recent')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Filter calls client-side based on selected types
+                        const filteredCalls = data.calls.filter(call => 
+                            selectedTypes.includes(call.emergency_type)
+                        );
+                        updateCallsTable(filteredCalls);
+                        updateMapMarkers(filteredCalls);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error applying type filters:', error);
+                    const tableBody = document.getElementById('recent-calls-table');
+                    tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error applying filters. Please try again.</td></tr>`;
+                });
+        }
+        
+        function getEmergencyTypeClass(type) {
+            if (!type) return 'secondary';
+            
+            switch (type.toLowerCase()) {
+                case 'medical':
+                    return 'danger';
+                case 'fire':
+                    return 'warning';
+                case 'crime':
+                    return 'info';
+                case 'other':
+                    return 'success';
+                default:
+                    return 'secondary';
+            }
+        }
+        
+        function getPriorityClass(priority) {
+            if (!priority) return 'secondary';
+            
+            switch (priority.toLowerCase()) {
+                case 'high':
+                    return 'danger';
+                case 'medium':
+                    return 'warning';
+                case 'low':
+                    return 'success';
+                default:
+                    return 'secondary';
+            }
+        }
+        
+        function capitalizeFirstLetter(string) {
+            if (!string) return '';
+            return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+        }
+    </script>
+</body>
+</html>
