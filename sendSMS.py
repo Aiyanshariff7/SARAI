@@ -2,8 +2,8 @@ import os
 from twilio.rest import Client
 
 def sendMSG(msg, ph_no) :
-    account_sid = "ACcd9f88833ecd42eaaf34bd32da8c61097"
-    auth_token = "e15061e67800ad9581e94ad804f24dc9e6"
+    account_sid = ""
+    auth_token = ""
     client = Client(account_sid, auth_token)
     message = client.messages.create(
       body=msg,
