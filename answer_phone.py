@@ -24,12 +24,12 @@ app = Flask(__name__)
 base_url = "https://api.assemblyai.com/v2"
 
 # Twilio Client
-client = Client("ACcd9f88833ecd42eaa34bd32dxa8c61097", "e15061e6780ad9581xe94ad04f24dc9e6")
+client = Client("")
 
 # Ethereum setup
 provider = Web3.HTTPProvider('https://eth-sepolia.g.alchemy.com/v2/4aOT7ezZZe-7UVJ9UGEcHYtHWnd1O154j')
 w3 = Web3(provider)
-contract_address = Web3.to_checksum_address("0xe7f1725E77334CE288F8367e1Bb143E90bb3F0512")
+contract_address = Web3.to_checksum_address("")
 
 
 contract_abi = [
@@ -134,7 +134,7 @@ contract_abi = [
 ]
 
 contract = w3.eth.contract(address=contract_address, abi=contract_abi)
-sender_address = Web3.to_checksum_address("0x8453ada3A9E671E0f115B2f2A2939b03aD519615")
+sender_address = Web3.to_checksum_address("")
 w3.eth.defaultAccount = sender_address
 # Database setup
 DB_CONFIG = {
@@ -243,9 +243,9 @@ def answer_call():
 
 @app.route("/handle-recording", methods=['GET', 'POST'])
 def handle_recording():
-    API_KEY = "8f0cb68b51434eb5a1dd5af7b4c93176"
-    TWILIO_SID = "ACcd9f88833ecd42eaa34bd32da8c61097"
-    TWILIO_AUTH_TOKEN = "e15061e6780ad9581e94ad04f24dc9e6"
+    API_KEY = ""
+    TWILIO_SID = ""
+    TWILIO_AUTH_TOKEN = ""
     time.sleep(10)
 
     headers = {
